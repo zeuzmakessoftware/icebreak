@@ -338,6 +338,7 @@ export default function IcebreakApp() {
                               if (currentStep < questions.length) {
                                 setCurrentStep(currentStep + 1)
                               } else {
+                                responsesData[0].answers = [...answers]
                                 setCurrentStep(questions.length + 1)
                               }
                             }}
