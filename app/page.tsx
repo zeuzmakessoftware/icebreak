@@ -1,9 +1,11 @@
+// page.tsx (Corrected)
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
-import { Sparkles, Users, MessageSquare, ChevronRight, Zap, Heart } from 'lucide-react'
+import { Sparkles, Users, MessageSquare, ChevronRight, Zap } from 'lucide-react'
 import { CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { BestPairsModal } from '@/components/BestPairsModal'
 import { Button } from '@/components/ui/button'
 
 type Particle = {
@@ -15,30 +17,135 @@ type Particle = {
   duration: number
 }
 
-const questions = [
-  "What's your favorite unconventional productivity hack?",
-  'If you could work from any fictional location, where would it be?',
-  "What's one skill you've picked up since working remotely?",
-]
+interface AllResultItem {
+  id?: string;
+  score?: number;
+  fields: {
+    person: string;
+    question: string;
+    answer: string;
+  };
+}
 
-/** JSON data embedded in the code **/
-const responsesData = [
-  {
-    name: '', // Will be filled with userName
-    answers: ['', '', ''],
-  },
-  {
-    name: 'Alex Morgan',
-    answers: ['Pomodoro with 90min cycles', 'Hogwarts Library', 'Sign language basics'],
-  },
-  {
-    name: 'Jane Doe',
-    answers: ['Cold showers in the morning', 'The Shire', 'Video editing'],
-  },
-  {
-    name: 'Carlos Ruiz',
-    answers: ['Standing desk rotations', 'Cybertron', '3D modeling'],
-  },
+interface Match {
+  match_with: string;
+  reason: string;
+}
+
+interface Pairing {
+  person: string;
+  matches: Match[];
+}
+
+interface BestPairsData {
+  pairings: Pairing[];
+}
+
+interface BestPairsError {
+  error: string;
+}
+
+const allQuestions = [
+  "Are you a dog person or a cat person?",
+  "What's your go-to comfort food?",
+  "If you could have any superpower, what would it be?",
+  "Are you an early bird or a night owl?",
+  "What's the best concert you've ever been to?",
+  "If you could travel anywhere in the world right now, where would you go?",
+  "What's your favorite way to unwind after a long day?",
+  "Sweet or savory snacks?",
+  "What's a skill you've always wanted to learn?",
+  "Are you more of a spontaneous adventurer or a meticulous planner?",
+  "What's the funniest movie you've ever seen?",
+  "Do you prefer coffee, tea, or something else to kickstart your day?",
+  "What's one small thing that always makes your day better?",
+  "If you were a professional athlete, what sport would you play?",
+  "Beach vacation or mountain retreat?",
+  "What's a book you'd recommend to everyone?",
+  "Do you prefer to listen to music while you work, or do you need silence?",
+  "What's the most unusual thing you've ever eaten?",
+  "If you could instantly become an expert in any one subject, what would it be?",
+  "Are you more likely to binge-watch a show or watch episodes one by one?",
+  "What's your favorite season and why?",
+  "If you could meet any historical figure, who would it be?",
+  "What's your dream car (or mode of transportation)?",
+  "Are you a fan of board games, video games, or both?",
+  "What's your favorite type of weather?",
+  "If you could only eat one cuisine for the rest of your life, what would it be?",
+  "What's one place you've visited that exceeded your expectations?",
+  "Do you prefer reading a physical book or an e-reader?",
+  "What's your favorite type of exercise or physical activity?",
+  "If you had a personal chef, what would they cook for you most often?",
+  "What's a TV show you've recently binged?",
+  "Are you good at remembering names or faces?",
+  "What's the bravest thing you've ever done?",
+  "If you could live in any fictional world, which one would it be?",
+  "What's your favorite holiday?",
+  "Do you prefer a quiet night in or a lively night out?",
+  "What's a unique talent you have?",
+  "Are you more of a morning person or an evening person when it comes to creativity?",
+  "What's your favorite type of music to relax to?",
+  "If you could learn any language fluently, which would it be?",
+  "What's the most interesting fact you know?",
+  "Do you prefer sweet or salty popcorn?",
+  "What's a random act of kindness you've done or witnessed?",
+  "If you won the lottery, what's the first thing you'd do?",
+  "What's your favorite type of outdoor activity?",
+  "Are you a good cook, or do you prefer to eat out?",
+  "What's a historical event you'd love to witness?",
+  "Do you prefer hot drinks or cold drinks?",
+  "What's a piece of technology you can't live without?",
+  "If you had a theme song, what would it be?",
+  "What's your favorite type of art (painting, sculpture, music, etc.)?",
+  "Do you prefer texting or calling?",
+  "What's the most beautiful place you've ever seen?",
+  "If you could trade lives with any celebrity for a day, who would it be?",
+  "What's your favorite thing to do on a rainy day?",
+  "Are you a good dancer?",
+  "What's a unique hobby you have?",
+  "Do you prefer to learn by doing, or by reading/listening?",
+  "What's your favorite type of dessert?",
+  "If you could have dinner with any three people, living or dead, who would they be?",
+  "What's the most challenging thing you've ever learned?",
+  "Do you prefer to work alone or in a team?",
+  "What's your ideal weekend activity?",
+  "If you could invent anything, what would it be?",
+  "What's your favorite type of sandwich?",
+  "Are you a fan of puzzles (jigsaw, crosswords, etc.)?",
+  "What's a travel essential you never leave home without?",
+  "Do you prefer a busy city or a quiet countryside?",
+  "What's your favorite type of footwear?",
+  "If you could only watch one genre of movies for the rest of your life, what would it be?",
+  "What's a hidden gem restaurant you love?",
+  "Are you a better speaker or listener?",
+  "What's the most adventurous food you've ever tried?",
+  "If you had to pick a theme for your life, what would it be?",
+  "What's your favorite form of exercise that doesn't feel like exercise?",
+  "Do you prefer to drive or be a passenger on road trips?",
+  "What's a cause you're passionate about?",
+  "If you could master any musical instrument, which would it be?",
+  "What's your favorite type of salad dressing?",
+  "Are you a fan of stand-up comedy?",
+  "What's the best piece of advice you've ever received?",
+  "Do you prefer digital or physical photos?",
+  "What's your favorite app on your phone?",
+  "If you could teleport anywhere for a day, where would you go?",
+  "What's your favorite type of pizza topping?",
+  "Are you good at remembering jokes?",
+  "What's a personal goal you're currently working on?",
+  "Do you prefer sunrise or sunset?",
+  "What's a famous landmark you'd love to visit?",
+  "If you could have a conversation with your future self, what would you ask?",
+  "What's your favorite childhood memory?",
+  "Do you prefer to give or receive gifts?",
+  "What's a skill you'd like to improve this year?",
+  "If you could spend a day doing anything you wanted, what would it be?",
+  "What's your favorite type of flower?",
+  "Are you a fan of reality TV?",
+  "What's a surprising fact about you?",
+  "Do you prefer a strict routine or going with the flow?",
+  "What's one thing you're grateful for today?",
+  "If your life were a song, what would its title be?"
 ]
 
 function ParticleCanvas() {
@@ -52,10 +159,8 @@ function ParticleCanvas() {
       const x1 = Math.random() * 100
       const y1 = Math.random() * 100
       const duration = Math.random() * 10 + 10
-
       return { x0, y0, size, x1, y1, duration }
     })
-
     setParticles(arr)
   }, [])
 
@@ -96,7 +201,13 @@ function ParticleCanvas() {
 export default function IcebreakApp() {
   const [currentStep, setCurrentStep] = useState(0)
   const [userName, setUserName] = useState('')
-  const [answers, setAnswers] = useState<string[]>(Array(questions.length).fill(''))
+  const [selectedQuestions, setSelectedQuestions] = useState<string[]>([])
+  const [answers, setAnswers] = useState<string[]>([])
+  const [similarResults, setSimilarResults] = useState<AllResultItem[]>([])
+  const [allResults, setAllResults] = useState<AllResultItem[]>([])
+  const [bestPairs, setBestPairs] = useState<BestPairsData | BestPairsError | null>(null)
+  const [isGeneratingPairs, setIsGeneratingPairs] = useState<boolean>(false)
+  const [isPairsModalOpen, setIsPairsModalOpen] = useState<boolean>(false)
   const containerRef = useRef(null)
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -108,7 +219,6 @@ export default function IcebreakApp() {
   const magneticRef = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     if (!magneticRef.current) return
-
     const btn = magneticRef.current
     const onMouseMove = (e: MouseEvent) => {
       const { left, top, width, height } = btn.getBoundingClientRect()
@@ -127,10 +237,88 @@ export default function IcebreakApp() {
     }
   }, [])
 
-  // Update responsesData[0].name whenever userName changes
+  const fetchSimilar = () => {
+    const queryText = answers.join(' ')
+    fetch(`/api/fetchRecords?q=${encodeURIComponent(queryText)}&kAmount=2`)
+      .then(res => res.json())
+      .then(res => setSimilarResults(res.data.result.hits || []))
+  }
+
+  const fetchAll = () => {
+    const queryText = answers.join(' ')
+    fetch(`/api/fetchRecords?q=${encodeURIComponent(queryText)}&kAmount=40`)
+      .then(res => res.json())
+      .then(res => setAllResults(res.data.result.hits.slice(2, 42) || []))
+  }
+
   useEffect(() => {
-    responsesData[0].name = userName
-  }, [userName])
+    if (currentStep === selectedQuestions.length + 1) {
+      fetchSimilar()
+      fetchAll()
+    }
+  }, [currentStep, userName, answers])
+
+  const handleGeneratePairs = async () => {
+    if (!userName || answers.length < selectedQuestions.length) {
+      console.error('Cannot generate pairs without user name and all answers.')
+      setBestPairs({ error: 'Please provide your name and answer all selected questions before generating pairs.' })
+      setIsGeneratingPairs(false)
+      return false
+    }
+    setIsGeneratingPairs(true)
+    setBestPairs(null)
+    try {
+      const response = await fetch('/api/generatePairs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentUser: { name: userName, questions: selectedQuestions, answers },
+          allUsersData: allResults,
+        }),
+      })
+
+      const responseData = await response.json()
+
+      if (!response.ok) {
+        throw new Error(responseData.error || 'Failed to generate pairs from API')
+      }
+
+      if (responseData.success) {
+        if (responseData.pairs && Array.isArray(responseData.pairs.pairings)) {
+          setBestPairs({ pairings: responseData.pairs.pairings });
+        } else {
+          console.error('LLM response structure for pairs is not as expected. Expected .pairs.pairings to be an array. Received:', responseData.pairs);
+          setBestPairs({ error: 'Received malformed pairing data from AI. The structure was not as expected.' });
+        }
+      } else {
+        setBestPairs({ error: responseData.error || 'Unknown error from API' });
+      }
+      return true
+    } catch (error) {
+      console.error('Error generating pairs:', error)
+      setBestPairs({ error: (error as Error).message })
+      return false
+    } finally {
+      setIsGeneratingPairs(false)
+    }
+  }
+
+  const openPairsModalAndGenerate = async () => {
+    setIsPairsModalOpen(true)
+    await handleGeneratePairs()
+  }
+
+  const pickThreeQuestions = () => {
+    const copy = [...allQuestions]
+    const picked: string[] = []
+    for (let i = 0; i < 3; i++) {
+      const idx = Math.floor(Math.random() * copy.length)
+      picked.push(copy.splice(idx, 1)[0]!)
+    }
+    return picked
+  }
 
   return (
     <div
@@ -138,7 +326,6 @@ export default function IcebreakApp() {
       className="min-h-screen bg-gradient-to-br from-[#0A0B1A] via-[#1A1B3A] to-[#2A2B5A] overflow-hidden"
     >
       <ParticleCanvas />
-
       <div className="fixed inset-0 pointer-events-none">
         <motion.div
           className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-[radial-gradient(circle_at_center,#A18CD155_0%,transparent_70%)] blur-3xl"
@@ -167,10 +354,9 @@ export default function IcebreakApp() {
           }}
         />
       </div>
-
       <div className="relative z-10 container mx-auto px-4 py-20">
         <AnimatePresence mode="wait">
-          {currentStep <= questions.length ? (
+          {currentStep <= selectedQuestions.length ? (
             <motion.div
               key="step"
               initial={{ opacity: 0, y: 20 }}
@@ -204,7 +390,7 @@ export default function IcebreakApp() {
                             ease: 'linear',
                           }}
                         >
-                          Icebreak
+                          Connectify
                         </motion.h1>
                         <motion.p
                           className="text-[#E0DFFB] mt-2 text-lg"
@@ -214,11 +400,10 @@ export default function IcebreakApp() {
                         >
                           {currentStep === 0
                             ? 'Enter Your Name'
-                            : `Question ${currentStep} of ${questions.length}`}
+                            : `Question ${currentStep} of ${selectedQuestions.length}`}
                         </motion.p>
                       </motion.div>
                     </CardHeader>
-
                     <CardContent className="p-8 space-y-8">
                       {currentStep === 0 ? (
                         <motion.div
@@ -234,7 +419,7 @@ export default function IcebreakApp() {
                             placeholder=" "
                           />
                           <motion.label
-                            className="absolute left-4 top-1/2 -translate-y-1/12 text-[#D1CCF0]/70 pointer-events-none transition-all duration-200 peer-focus:top-2 peer-focus:text-xs peer-focus:text-white peer-[&:not(:placeholder-shown)]:top-2 peer-[&:not(:placeholder-shown)]:text-xs"
+                            className="absolute left-4 top-1/2 -translate-y-1/12 text-[#D1CCF0]/70 pointer-events-none transition-all duration-200 peer-focus:top-2 peer-focus:text-xs peer-focus:text-white peer-[&:not(:placeholder-shown)]:top-2 peer-[&:not(:placeholder-shown)]:text-xs opacity-20"
                             layout
                           >
                             Name...
@@ -243,6 +428,9 @@ export default function IcebreakApp() {
                             ref={magneticRef}
                             onClick={() => {
                               if (userName.trim()) {
+                                const picked = pickThreeQuestions()
+                                setSelectedQuestions(picked)
+                                setAnswers(Array(picked.length).fill(''))
                                 setCurrentStep(1)
                               }
                             }}
@@ -303,11 +491,10 @@ export default function IcebreakApp() {
                                 <Sparkles className="h-5 w-5 text-white" />
                               </div>
                               <p className="text-white font-medium text-lg">
-                                {questions[currentStep - 1]}
+                                {selectedQuestions[currentStep - 1]}
                               </p>
                             </div>
                           </motion.div>
-
                           <motion.div
                             className="relative"
                             initial={{ opacity: 0, y: 10 }}
@@ -331,15 +518,13 @@ export default function IcebreakApp() {
                               Type your answer...
                             </motion.label>
                           </motion.div>
-
                           <motion.button
                             ref={magneticRef}
                             onClick={() => {
-                              if (currentStep < questions.length) {
+                              if (currentStep < selectedQuestions.length) {
                                 setCurrentStep(currentStep + 1)
                               } else {
-                                responsesData[0].answers = [...answers]
-                                setCurrentStep(questions.length + 1)
+                                setCurrentStep(selectedQuestions.length + 1)
                               }
                             }}
                             disabled={!answers[currentStep - 1]}
@@ -348,7 +533,7 @@ export default function IcebreakApp() {
                             whileTap={{ scale: 0.98 }}
                           >
                             <span className="relative z-10 flex items-center justify-center">
-                              {currentStep < questions.length ? (
+                              {currentStep < selectedQuestions.length ? (
                                 <>
                                   Next Question <ChevronRight className="ml-2 h-4 w-4" />
                                 </>
@@ -394,90 +579,102 @@ export default function IcebreakApp() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.6 }}
                 >
-                  Team Responses
+                  Similar Matches
                 </motion.h2>
-                <motion.p
-                  className="text-[#E0DFFB] text-lg"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.8 }}
-                >
-                  Here’s what everyone answered to each question
-                </motion.p>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {responsesData.map((person, idx) => (
+                {similarResults.map((item) => (
                   <motion.div
-                    key={idx}
-                    className={`backdrop-blur-md ${
-                      person.name === userName
-                        ? 'bg-[linear-gradient(135deg,rgba(255,255,255,0.15)_0%,rgba(255,255,255,0.05)_100%)] border-2 border-white/20'
-                        : 'bg-[linear-gradient(135deg,rgba(255,255,255,0.15)_0%,rgba(255,255,255,0.05)_100%)] border-2 border-[#A18CD1]/50'
-                    } rounded-2xl p-6 relative overflow-hidden`}
+                    key={item.id}
+                    className="backdrop-blur-md bg-[linear-gradient(135deg,rgba(255,255,255,0.15)_0%,rgba(255,255,255,0.05)_100%)] border-2 border-[#A18CD1]/50 rounded-2xl p-6 relative overflow-hidden"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 1 + idx * 0.2 }}
+                    transition={{ delay: 1 + similarResults.indexOf(item) * 0.2 }}
                   >
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#6A82FB_0%,transparent_70%)] opacity-10" />
                     <div className="relative z-10">
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-bold text-white text-xl">{person.name}</h3>
-                        {person.name !== userName ? (
-                          <motion.span
-                            className="bg-[#A18CD1]/30 text-[#D1CCF0] text-xs px-3 py-1 rounded-full flex items-center"
-                            animate={{
-                              rotate: [0, 5, -5, 0],
-                            }}
-                            transition={{
-                              duration: 2,
-                              repeat: Infinity,
-                              repeatType: 'reverse',
-                              ease: 'easeInOut',
-                            }}
-                          >
-                            <Zap className="h-3 w-3 mr-1 fill-current" />
-                            OTHER
-                          </motion.span>
-                        ) : (
-                          <motion.span
-                            className="bg-white/20 text-white text-xs px-3 py-1 rounded-full flex items-center"
-                            animate={{
-                              boxShadow: ['0 0 0 0 rgba(255,255,255,0.4)', '0 0 0 10px rgba(255,255,255,0)'],
-                            }}
-                            transition={{
-                              duration: 2,
-                              repeat: Infinity,
-                              ease: 'easeOut',
-                            }}
-                          >
-                            <Heart className="h-3 w-3 mr-1 fill-current" />
-                            YOU
-                          </motion.span>
-                        )}
+                        <h3 className="font-bold text-white text-xl">{item.fields?.person || 'Unknown'}</h3>
+                        <motion.span
+                          className="bg-[#A18CD1]/30 text-[#D1CCF0] text-xs px-3 py-1 rounded-full flex items-center"
+                          animate={{ rotate: [0, 5, -5, 0] }}
+                          transition={{ duration: 2, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
+                        >
+                          <Zap className="h-3 w-3 mr-1 fill-current" />
+                          MATCH
+                        </motion.span>
                       </div>
                       <ul className="space-y-3">
-                        {questions.map((q, i) => (
-                          <motion.li
-                            key={i}
-                            className="flex items-start"
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 1.2 + idx * 0.1 + i * 0.1 }}
-                          >
-                            <div className="mr-3 text-[#D1CCF0] font-bold">{i + 1}.</div>
-                            <div>
-                              <div className="text-[#D1CCF0] text-sm italic">{q}</div>
-                              <div className="text-white">{person.answers[i] || 'Not answered'}</div>
-                            </div>
-                          </motion.li>
-                        ))}
+                        <motion.li className="flex items-start">
+                          <div className="mr-3 text-[#D1CCF0] font-bold">Q:</div>
+                          <div className="text-[#D1CCF0] text-sm italic">{item.fields?.question}</div>
+                        </motion.li>
+                        <motion.li className="flex items-start">
+                          <div className="mr-3 text-[#D1CCF0] font-bold">A:</div>
+                          <div className="text-white">{item.fields?.answer}</div>
+                        </motion.li>
                       </ul>
                     </div>
                   </motion.div>
                 ))}
               </div>
-
+              <div className="my-8 text-center">
+                <Button
+                  onClick={openPairsModalAndGenerate}
+                  disabled={isGeneratingPairs}
+                  className="w-full md:w-auto bg-[#A18CD1] hover:bg-[#6A82FB] text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ease-in-out"
+                >
+                  {isGeneratingPairs && isPairsModalOpen ? (
+                    <>
+                      <motion.div
+                        className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"
+                        transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+                      />
+                      Generating Pairs...
+                    </>
+                  ) : (
+                    'See Best Pairs (AI)'
+                  )}
+                </Button>
+              </div>
+              <div className="text-center">
+                <motion.h2
+                  className="text-3xl font-bold bg-clip-text text-transparent bg-[linear-gradient(90deg,#FFFFFF_0%,#D1CCF0_50%,#FFFFFF_100%)] mb-2"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6 }}
+                >
+                  All Q&A
+                </motion.h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {allResults.map((item) => (
+                  <motion.div
+                    key={item.id}
+                    className="backdrop-blur-md bg-[linear-gradient(135deg,rgba(255,255,255,0.15)_0%,rgba(255,255,255,0.05)_100%)] border-2 border-[#A18CD1]/50 rounded-2xl p-6 relative overflow-hidden"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1 + allResults.indexOf(item) * 0.05 }}
+                  >
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#6A82FB_0%,transparent_70%)] opacity-10" />
+                    <div className="relative z-10">
+                      <ul className="space-y-3">
+                        <motion.li className="flex items-start">
+                          <div className="text-white">{item.fields?.person}</div>
+                        </motion.li>
+                        <motion.li className="flex items-start">
+                          <div className="mr-3 text-[#D1CCF0] font-bold">Q:</div>
+                          <div className="text-[#D1CCF0] text-sm italic">{item.fields?.question}</div>
+                        </motion.li>
+                        <motion.li className="flex items-start">
+                          <div className="mr-3 text-[#D1CCF0] font-bold">A:</div>
+                          <div className="text-white">{item.fields?.answer}</div>
+                        </motion.li>
+                      </ul>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
               <motion.div
                 className="mt-12 text-center relative"
                 initial={{ opacity: 0 }}
@@ -511,7 +708,10 @@ export default function IcebreakApp() {
                   onClick={() => {
                     setCurrentStep(0)
                     setUserName('')
-                    setAnswers(Array(questions.length).fill(''))
+                    setSelectedQuestions([])
+                    setAnswers([])
+                    setSimilarResults([])
+                    setAllResults([])
                   }}
                   className="relative overflow-hidden py-5 px-8 text-white hover:text-white border border-white/20 hover:border-white/40 rounded-xl bg-white/5 hover:bg-white/10 backdrop-blur-md transition-all group"
                 >
@@ -528,6 +728,13 @@ export default function IcebreakApp() {
           )}
         </AnimatePresence>
       </div>
+      <BestPairsModal
+        isOpen={isPairsModalOpen}
+        onClose={() => setIsPairsModalOpen(false)}
+        pairsData={bestPairs}
+        isLoading={isGeneratingPairs}
+        currentUser={userName}
+      />
     </div>
   )
 }

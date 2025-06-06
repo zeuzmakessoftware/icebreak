@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Icebreak",
-  description: "Icebreak is a fun and interactive way to get to know your team better.",
+  title: "Connectify",
+  description: "Connectify is a fun and interactive way to get to know your team better.",
 };
 
 export default function RootLayout({
