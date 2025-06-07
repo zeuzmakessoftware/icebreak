@@ -39,14 +39,6 @@ interface Pairing {
   matches: Match[];
 }
 
-interface BestPairsData {
-  pairings: Pairing[];
-}
-
-interface BestPairsError {
-  error: string;
-}
-
 const allQuestions = [
   "Are you a dog person or a cat person?",
   "What's your go-to comfort food?",
@@ -207,7 +199,7 @@ export default function IcebreakApp() {
   const [answers, setAnswers] = useState<string[]>([])
   const [similarResults, setSimilarResults] = useState<AllResultItem[]>([])
   const [allResults, setAllResults] = useState<AllResultItem[]>([])
-  const [bestPairs, setBestPairs] = useState<BestPairsData | BestPairsError | null>(null)
+  const [bestPairs, setBestPairs] = useState<{ pairings?: Pairing[]; error?: string } | null>(null)
   const [isGeneratingPairs, setIsGeneratingPairs] = useState<boolean>(false)
   const [isPairsModalOpen, setIsPairsModalOpen] = useState<boolean>(false)
   const [isAdminOpen, setIsAdminOpen] = useState(false) // NEW: State for admin panel visibility

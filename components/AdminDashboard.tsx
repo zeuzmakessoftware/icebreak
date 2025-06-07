@@ -3,9 +3,13 @@
 import React, { useRef, useMemo } from 'react'
 import * as d3 from 'd3'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { TooltipProps } from 'recharts'
+import { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent'
 import { BestPairsModal } from '@/components/BestPairsModal'
 import { gsap } from 'gsap'
 import { useGSAP } from '@gsap/react'
+
+// --- Type Definitions ---
 
 interface AllResultItem {
   id?: string;
@@ -17,7 +21,46 @@ interface AllResultItem {
   };
 }
 
-const ForceDirectedConstellation: React.FC<{ data: { name: string; group: number }[] }> = ({ data }) => {
+// For D3 Force-Directed Graph
+interface NodeData {
+  name: string;
+  group: number;
+}
+interface SimulationNode extends d3.SimulationNodeDatum, NodeData {}
+
+// For Recharts Bar Chart
+interface ChartData {
+  question: string;
+  count: number;
+}
+
+// Match and Pairing interfaces for bestPairs data structure
+interface Match {
+  match_with: string;
+  reason: string;
+}
+
+interface Pairing {
+  person: string;
+  matches: Match[];
+}
+
+// For the main component's props
+interface AdminDashboardProps {
+  userName?: string;
+  selectedQuestions?: string[];
+  answers?: string[];
+  similarResults?: AllResultItem[];
+  allResults: AllResultItem[];
+  bestPairs: { pairings?: Pairing[]; error?: string; } | null;
+  isGeneratingPairs: boolean;
+  isPairsModalOpen: boolean;
+  openPairsModalAndGenerate: () => void;
+  onCloseAdmin: () => void;
+}
+
+
+const ForceDirectedConstellation: React.FC<{ data: NodeData[] }> = ({ data }) => {
   const svgRef = useRef<SVGSVGElement>(null)
   
   useGSAP(() => {
@@ -36,15 +79,15 @@ const ForceDirectedConstellation: React.FC<{ data: { name: string; group: number
     feMerge.append('feMergeNode').attr('in', 'coloredBlur');
     feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
 
-    const simulation = d3.forceSimulation(data as any)
+    const simulation = d3.forceSimulation<SimulationNode>(data as SimulationNode[])
       .force('charge', d3.forceManyBody().strength(-1))
       .force('center', d3.forceCenter(width / 2, height / 2))
       .force('collision', d3.forceCollide(30))
-      .force('link', d3.forceLink().id((d: any) => d.name).distance(70).strength(0.01));
+      .force('link', d3.forceLink<SimulationNode, d3.SimulationLinkDatum<SimulationNode>>().id((d) => d.name).distance(70).strength(0.01));
 
     const linksData = data.length > 1 ? data.map((_, i) => ({
-      source: data[i].name,
-      target: data[Math.floor(Math.random() * data.length)].name,
+      source: data[i].name as unknown as SimulationNode,
+      target: data[Math.floor(Math.random() * data.length)].name as unknown as SimulationNode,
     })) : [];
 
     const link = svg.append('g')
@@ -56,7 +99,7 @@ const ForceDirectedConstellation: React.FC<{ data: { name: string; group: number
 
     const nodes = svg.append('g')
       .selectAll('circle')
-      .data(data)
+      .data(data as SimulationNode[])
       .enter().append('circle')
       .attr('r', 10)
       .attr('fill', 'rgba(0, 255, 255, 0.7)')
@@ -64,11 +107,11 @@ const ForceDirectedConstellation: React.FC<{ data: { name: string; group: number
       .attr('stroke-width', 1.5)
       .style('cursor', 'pointer')
       .style('filter', 'url(#glow)')
-      .call(drag(simulation) as any);
+      .call(drag(simulation));
 
     const labels = svg.append('g')
       .selectAll('text')
-      .data(data)
+      .data(data as SimulationNode[])
       .enter().append('text')
       .text(d => d.name)
       .attr('font-size', '10px')
@@ -78,35 +121,35 @@ const ForceDirectedConstellation: React.FC<{ data: { name: string; group: number
       .style('pointer-events', 'none')
       .style('text-shadow', '0 0 5px rgba(0, 255, 255, 0.8)');
     
-    nodes.on('mouseenter', (event, d) => {
-        const node = d3.select(event.currentTarget);
+    nodes.on('mouseenter', (event: MouseEvent) => {
+        const node = d3.select(event.currentTarget as Element);
         gsap.to(node.node(), { r: 18, duration: 0.3, ease: 'back.out(4)' });
         gsap.to(node.node(), { fill: 'rgba(255, 105, 180, 1)', duration: 0.3 });
-    }).on('mouseleave', (event, d) => {
-        const node = d3.select(event.currentTarget);
+    }).on('mouseleave', (event: MouseEvent) => {
+        const node = d3.select(event.currentTarget as Element);
         gsap.to(node.node(), { r: 10, duration: 0.5, ease: 'elastic.out(1, 0.3)' });
         gsap.to(node.node(), { fill: 'rgba(0, 255, 255, 0.7)', duration: 0.5 });
     });
 
     simulation.on('tick', () => {
       link
-        .attr('x1', d => (d.source as any).x)
-        .attr('y1', d => (d.source as any).y)
-        .attr('x2', d => (d.target as any).x)
-        .attr('y2', d => (d.target as any).y);
+        .attr('x1', d => (d.source as SimulationNode).x ?? 0)
+        .attr('y1', d => (d.source as SimulationNode).y ?? 0)
+        .attr('x2', d => (d.target as SimulationNode).x ?? 0)
+        .attr('y2', d => (d.target as SimulationNode).y ?? 0);
       nodes
-        .attr('cx', d => (d as any).x)
-        .attr('cy', d => (d as any).y);
+        .attr('cx', d => d.x ?? 0)
+        .attr('cy', d => d.y ?? 0);
       labels
-        .attr('x', d => (d as any).x)
-        .attr('y', d => (d as any).y);
+        .attr('x', d => d.x ?? 0)
+        .attr('y', d => d.y ?? 0);
     });
 
-    function drag(simulation: any) {
-        const dragstarted = (event: any) => { if (!event.active) simulation.alphaTarget(0.3).restart(); event.subject.fx = event.subject.x; event.subject.fy = event.subject.y; };
-        const dragged = (event: any) => { event.subject.fx = event.x; event.subject.fy = event.y; };
-        const dragended = (event: any) => { if (!event.active) simulation.alphaTarget(0); event.subject.fx = null; event.subject.fy = null; };
-        return d3.drag().on('start', dragstarted).on('drag', dragged).on('end', dragended);
+    function drag(simulation: d3.Simulation<SimulationNode, undefined>) {
+        const dragstarted = (event: d3.D3DragEvent<SVGCircleElement, SimulationNode, SimulationNode>) => { if (!event.active) simulation.alphaTarget(0.3).restart(); event.subject.fx = event.subject.x; event.subject.fy = event.subject.y; };
+        const dragged = (event: d3.D3DragEvent<SVGCircleElement, SimulationNode, SimulationNode>) => { event.subject.fx = event.x; event.subject.fy = event.y; };
+        const dragended = (event: d3.D3DragEvent<SVGCircleElement, SimulationNode, SimulationNode>) => { if (!event.active) simulation.alphaTarget(0); event.subject.fx = null; event.subject.fy = null; };
+        return d3.drag<SVGCircleElement, SimulationNode>().on('start', dragstarted).on('drag', dragged).on('end', dragended);
     }
     
     return () => simulation.stop();
@@ -120,8 +163,8 @@ const ForceDirectedConstellation: React.FC<{ data: { name: string; group: number
   />;
 }
 
-const StarlightBarChart: React.FC<{data: any[]}> = ({ data }) => {
-    const CustomTooltip = ({ active, payload, label }: any) => {
+const StarlightBarChart: React.FC<{data: ChartData[]}> = ({ data }) => {
+    const CustomTooltip = ({ active, payload, label }: TooltipProps<ValueType, NameType>) => {
         if (active && payload && payload.length) {
             return (
                 <div className="p-4 bg-black/50 backdrop-blur-lg border border-cyan-400/50 rounded-lg shadow-lg shadow-cyan-500/20 text-white">
@@ -146,7 +189,7 @@ const StarlightBarChart: React.FC<{data: any[]}> = ({ data }) => {
                 <YAxis tick={{ fill: 'rgba(224, 223, 251, 0.7)' }} tickLine={false} axisLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }} />
                 <Bar dataKey="count" fill="url(#barGradient)" radius={[10, 10, 0, 0]}>
-                    {data.map((entry, index) => (
+                    {data.map((_entry, index) => (
                          <Cell key={`cell-${index}`} />
                     ))}
                 </Bar>
@@ -155,21 +198,21 @@ const StarlightBarChart: React.FC<{data: any[]}> = ({ data }) => {
     );
 };
 
-export const AdminDashboard: React.FC<any> = ({
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   allResults, bestPairs, isGeneratingPairs, isPairsModalOpen, openPairsModalAndGenerate, onCloseAdmin
 }) => {
   const container = useRef<HTMLDivElement>(null);
 
-  const forceData = useMemo(() => {
+  const forceData: NodeData[] = useMemo(() => {
     if (!allResults || allResults.length === 0) return [];
     const uniquePeople = [...new Set(allResults.map((item: AllResultItem) => item.fields.person))];
     return uniquePeople.map((person, index) => ({
-      name: person as string,
+      name: person,
       group: index % 4
     }));
   }, [allResults]);
 
-  const questionPopularity = useMemo(() => {
+  const questionPopularity: ChartData[] = useMemo(() => {
     if (!allResults || allResults.length === 0) return [];
     const counts = new Map<string, number>();
     allResults.forEach((item: AllResultItem) => {
@@ -238,11 +281,8 @@ export const AdminDashboard: React.FC<any> = ({
         <div className="data-card lg:col-span-3 p-4 md:p-6 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 relative overflow-hidden">
             <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent animate-gradient-pan"></div>
             <h3 className="text-2xl font-semibold mb-4 text-cyan-200">User Constellation</h3>
-            <div className="h-[350px]">
+            <div className="h-[400px]">
                 <ForceDirectedConstellation data={forceData} />
-                <div className="h-[350px] w-full overflow-auto">
-                    <ForceDirectedConstellation data={forceData} />
-                </div>
             </div>
         </div>
         
